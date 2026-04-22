@@ -17,18 +17,10 @@
     }
 
     /* 등급별 배경 그라데이션 */
-    body.bg-1 {
-      background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 100%);
-    }
-    body.bg-2 {
-      background: linear-gradient(180deg, #fefce8 0%, #fef3c7 100%);
-    }
-    body.bg-3 {
-      background: linear-gradient(180deg, #ffedd5 0%, #fed7aa 100%);
-    }
-    body.bg-4 {
-      background: linear-gradient(180deg, #fee2e2 0%, #fecaca 100%);
-    }
+    body.bg-1 { background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 100%); }
+    body.bg-2 { background: linear-gradient(180deg, #fefce8 0%, #fef3c7 100%); }
+    body.bg-3 { background: linear-gradient(180deg, #ffedd5 0%, #fed7aa 100%); }
+    body.bg-4 { background: linear-gradient(180deg, #fee2e2 0%, #fecaca 100%); }
 
     .container {
       max-width: 480px;
@@ -39,6 +31,24 @@
     h1 { font-size: 24px; margin-bottom: 4px; }
     .subtitle { color: #6b7280; margin-bottom: 24px; font-size: 14px; }
 
+    /* 👾 캐릭터 영역 */
+    .character {
+      text-align: center;
+      font-size: 96px;
+      line-height: 1;
+      margin: 16px 0 24px;
+      animation: float 3s ease-in-out infinite;
+      transition: opacity 0.5s ease;
+    }
+    .character.hidden-char {
+      opacity: 0;
+      pointer-events: none;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+
     .card {
       background: white;
       border-radius: 16px;
@@ -47,6 +57,25 @@
       margin-bottom: 16px;
     }
     .status { font-size: 15px; color: #374151; line-height: 1.6; }
+
+    /* ✨ 카드 등장 애니메이션 */
+    #result {
+      animation: none;
+      opacity: 1;
+    }
+    #result.appear {
+      animation: slideUp 0.6s ease-out;
+    }
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(24px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
 
     button {
       width: 100%;
@@ -94,7 +123,6 @@
 
     .time { font-size: 12px; color: #9ca3af; margin-top: 12px; text-align: right; }
 
-    /* 등급별 조언 메시지 */
     .advice {
       padding: 16px;
       border-radius: 12px;
@@ -114,6 +142,9 @@
   <div class="container">
     <h1>🌫️ 내 주변 미세먼지</h1>
     <p class="subtitle">실시간 위치 기반 대기질 정보</p>
+
+    <!-- 👾 등급별 캐릭터 -->
+    <div class="character hidden-char" id="character">❓</div>
 
     <div class="card">
       <p class="status" id="status">버튼을 눌러 내 주변 공기질을 확인해보세요.</p>
@@ -147,12 +178,19 @@
   <script>
     const GRADE_LABELS = { '1': '좋음', '2': '보통', '3': '나쁨', '4': '매우나쁨' };
 
-    // PM10 기준 등급별 메시지
     const PM10_ADVICE = {
       '1': { title: '🌿 공기가 쾌적해요!', message: '야외 활동하기 좋은 날이에요.' },
       '2': { title: '😊 보통 수준이에요', message: '민감하신 분은 장시간 야외활동 시 주의하세요.' },
       '3': { title: '⚠️ 공기질이 좋지 않아요', message: '외출 시 KF80 이상 마스크 착용을 권장해요.' },
       '4': { title: '🚨 공기질이 매우 나빠요!', message: '가급적 외출을 자제하고, 나가실 땐 KF94 마스크를 착용해 주세요.' }
+    };
+
+    // 👾 등급별 캐릭터
+    const CHARACTERS = {
+      '1': '😊',
+      '2': '🙂',
+      '3': '😷',
+      '4': '🤢'
     };
 
     function getPm10Grade(value) {
@@ -174,12 +212,45 @@
       el.textContent = GRADE_LABELS[grade];
     }
 
-    // 배경 그라데이션 변경
     function setBodyGrade(grade) {
       document.body.classList.remove('bg-1', 'bg-2', 'bg-3', 'bg-4');
       if (grade && GRADE_LABELS[grade]) {
         document.body.classList.add('bg-' + grade);
       }
+    }
+
+    // 👾 캐릭터 표시
+    function setCharacter(grade) {
+      const charEl = document.getElementById('character');
+      if (grade && CHARACTERS[grade]) {
+        charEl.textContent = CHARACTERS[grade];
+        charEl.classList.remove('hidden-char');
+      } else {
+        charEl.classList.add('hidden-char');
+      }
+    }
+
+    // 🔢 숫자 카운트업 애니메이션
+    function animateNumber(el, target, duration = 1000) {
+      const start = 0;
+      const end = parseInt(target, 10);
+      if (isNaN(end)) {
+        el.textContent = target ?? '-';
+        return;
+      }
+      const startTime = performance.now();
+      function update(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // ease-out 효과
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = Math.round(start + (end - start) * eased);
+        el.textContent = current;
+        if (progress < 1) {
+          requestAnimationFrame(update);
+        }
+      }
+      requestAnimationFrame(update);
     }
 
     async function checkDust() {
@@ -194,6 +265,7 @@
 
       btn.disabled = true;
       result.classList.add('hidden');
+      result.classList.remove('appear');
       status.textContent = '📍 위치 확인 중...';
 
       try {
@@ -219,14 +291,14 @@
           '측정소: <strong>' + data.stationName + '</strong> (약 ' + data.distance + 'km)<br>' +
           (data.stationAddr || '');
 
-        document.getElementById('pm25').textContent = data.pm25 ?? '-';
+        // 등급 뱃지
         setGrade(document.getElementById('pm25Grade'), data.pm25Grade);
-
-        document.getElementById('pm10').textContent = data.pm10 ?? '-';
         setGrade(document.getElementById('pm10Grade'), data.pm10Grade);
 
-        // PM10 기준 등급별 조언 + 배경색 변화
+        // PM10 기준 등급 결정
         const pm10Grade = data.pm10Grade || getPm10Grade(data.pm10);
+
+        // 조언 메시지
         const adviceEl = document.getElementById('advice');
         if (pm10Grade && PM10_ADVICE[pm10Grade]) {
           adviceEl.className = 'advice advice-' + pm10Grade;
@@ -238,14 +310,29 @@
           adviceEl.textContent = '';
         }
 
-        // 🎨 배경 그라데이션 변경!
+        // 🎨 배경색 변화
         setBodyGrade(pm10Grade);
+
+        // 👾 캐릭터 등장
+        setCharacter(pm10Grade);
 
         document.getElementById('dataTime').textContent =
           data.dataTime ? '측정 시각: ' + data.dataTime : '';
 
         status.textContent = '✅ 최신 정보로 업데이트 완료';
+
+        // ✨ 카드 등장 애니메이션
         result.classList.remove('hidden');
+        // reflow 강제해서 애니메이션 재시작
+        void result.offsetWidth;
+        result.classList.add('appear');
+
+        // 🔢 숫자 카운트업 (카드 등장 후 살짝 딜레이)
+        setTimeout(() => {
+          animateNumber(document.getElementById('pm25'), data.pm25);
+          animateNumber(document.getElementById('pm10'), data.pm10);
+        }, 300);
+
       } catch (err) {
         status.textContent = '⚠️ 오류: ' + err.message;
       } finally {
