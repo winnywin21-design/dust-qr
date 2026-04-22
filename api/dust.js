@@ -35,6 +35,7 @@ export default async function handler(req, res) {
     ]);
 
     // 2단계: 근접 측정소 조회
+    // 주의: 이 API는 MsrstnInfoInqireSvc (Infor 아님!)
     const stationUrl =
       `https://apis.data.go.kr/B552584/MsrstnInfoInqireSvc/getNearbyMsrstnList` +
       `?serviceKey=${encodeURIComponent(KEY)}` +
@@ -56,8 +57,9 @@ export default async function handler(req, res) {
     const distance = stations[0].tm; // km 단위
 
     // 3단계: 해당 측정소의 실시간 측정 정보 조회
+    // 주의: 이 API는 ArpltnInforInqireSvc (r 하나 더!)
     const dustUrl =
-      `https://apis.data.go.kr/B552584/ArpltnInfoInqireSvc/getMsrstnAcctoRltmMesureDnsty` +
+      `https://apis.data.go.kr/B552584/ArpltnInforInqireSvc/getMsrstnAcctoRltmMesureDnsty` +
       `?serviceKey=${encodeURIComponent(KEY)}` +
       `&returnType=json` +
       `&numOfRows=1` +
