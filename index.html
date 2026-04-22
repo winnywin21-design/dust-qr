@@ -31,7 +31,6 @@
       z-index: 0;
     }
 
-    /* 🔊 음소거 토글 버튼 */
     .sound-toggle {
       position: fixed;
       top: 16px;
@@ -54,9 +53,7 @@
       transform: scale(1.1);
       box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
-    .sound-toggle:active {
-      transform: scale(0.95);
-    }
+    .sound-toggle:active { transform: scale(0.95); }
 
     .container {
       max-width: 480px;
@@ -109,6 +106,14 @@
     .speech-bubble.show {
       opacity: 1;
       transform: scale(1);
+    }
+    /* 🎤 말하는 중 pulse 효과 */
+    .speech-bubble.speaking {
+      animation: speechPulse 0.9s ease-in-out infinite;
+    }
+    @keyframes speechPulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+      50% { transform: scale(1.08); box-shadow: 0 4px 16px rgba(59, 130, 246, 0.25); }
     }
     .speech-bubble::after {
       content: '';
@@ -224,7 +229,6 @@
 <body>
   <canvas id="particles"></canvas>
 
-  <!-- 🔊 음소거 토글 -->
   <button class="sound-toggle" id="soundToggle" onclick="toggleSound()" title="소리 켜기/끄기">🔊</button>
 
   <div class="container">
@@ -287,10 +291,18 @@
     const CHARACTERS = { '1': '😊', '2': '🙂', '3': '😷', '4': '🤢' };
 
     const SPEECHES = {
-      '1': ['오늘 산책 어때요? 🌿', '창문 활짝 열어봐요!', '숨 쉬기 딱 좋은 날 ✨'],
-      '2': ['나쁘지 않네요~', '평범한 하루예요', '외출 OK, 조심히!'],
+      '1': ['오늘 산책 어때요?', '창문 활짝 열어봐요!', '숨 쉬기 딱 좋은 날이에요!'],
+      '2': ['나쁘지 않네요', '평범한 하루예요', '외출 괜찮아요, 조심히 다녀오세요'],
       '3': ['마스크 챙기세요!', '창문은 닫아두세요', '실내가 좋겠어요'],
-      '4': ['얼른 집에 가요... 😢', '외출은 피해요', '공기청정기 ON!']
+      '4': ['얼른 집에 가요', '외출은 피하세요', '공기청정기 켜세요']
+    };
+
+    // 🎤 등급별 음성 설정 (속도 rate, 피치 pitch)
+    const VOICE_SETTINGS = {
+      '1': { rate: 1.15, pitch: 1.2 },   // 밝고 빠른 톤
+      '2': { rate: 1.0,  pitch: 1.0 },   // 평범
+      '3': { rate: 0.95, pitch: 0.9 },   // 걱정
+      '4': { rate: 0.85, pitch: 0.75 }   // 힘없음
     };
 
     const PARTICLE_CONFIG = {
@@ -305,32 +317,24 @@
 
     // 🎵 ========= 사운드 시스템 =========
     let audioCtx = null;
-    let soundEnabled = localStorage.getItem('soundEnabled') !== 'false'; // 기본: 켜짐
-    const VOLUME = 0.3; // 30% 볼륨
+    let soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
+    const VOLUME = 0.3;
 
     function initAudio() {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       }
-      // 브라우저가 일시정지 상태면 재개
-      if (audioCtx.state === 'suspended') {
-        audioCtx.resume();
-      }
+      if (audioCtx.state === 'suspended') audioCtx.resume();
     }
 
-    // 🔔 웰컴 딩~ (두 음 화음)
     function playDing() {
       if (!soundEnabled) return;
       initAudio();
       const now = audioCtx.currentTime;
-
-      // 첫 번째 음 (C5)
       playTone(523.25, now, 0.4, 'sine');
-      // 두 번째 음 (E5, 살짝 늦게)
       playTone(659.25, now + 0.08, 0.4, 'sine');
     }
 
-    // 💬 말풍선 삐빅~
     function playBlip() {
       if (!soundEnabled) return;
       initAudio();
@@ -338,37 +342,76 @@
       playTone(880, now, 0.1, 'triangle', 0.5);
     }
 
-    // 개별 음 재생 (주파수, 시작시간, 지속시간, 파형, 볼륨배율)
     function playTone(freq, startTime, duration, type = 'sine', volMul = 1) {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
-
       osc.type = type;
       osc.frequency.value = freq;
-
-      // 부드러운 엔벨로프 (소리 자연스럽게 커지고 꺼지게)
       gain.gain.setValueAtTime(0, startTime);
       gain.gain.linearRampToValueAtTime(VOLUME * volMul, startTime + 0.02);
       gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
-
       osc.connect(gain);
       gain.connect(audioCtx.destination);
-
       osc.start(startTime);
       osc.stop(startTime + duration);
     }
 
-    // 🔊 음소거 토글
+    // 🎤 ========= 음성 합성 (TTS) =========
+    let koreanVoice = null;
+
+    // 한국어 음성 찾기 (비동기 로드됨)
+    function loadKoreanVoice() {
+      const voices = window.speechSynthesis.getVoices();
+      // 여성 목소리 우선, 없으면 아무 한국어 목소리
+      koreanVoice = voices.find(v => v.lang.startsWith('ko') && /female|yuna|heami/i.test(v.name))
+                 || voices.find(v => v.lang.startsWith('ko'))
+                 || null;
+    }
+    window.speechSynthesis.onvoiceschanged = loadKoreanVoice;
+    loadKoreanVoice();
+
+    // 말하기 함수
+    function speakText(text, grade) {
+      if (!soundEnabled) return;
+      if (!('speechSynthesis' in window)) return;
+
+      // 이전 음성 중단
+      window.speechSynthesis.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'ko-KR';
+      if (koreanVoice) utterance.voice = koreanVoice;
+
+      const settings = VOICE_SETTINGS[grade] || VOICE_SETTINGS['2'];
+      utterance.rate = settings.rate;
+      utterance.pitch = settings.pitch;
+      utterance.volume = 0.9;
+
+      // 🎤 pulse 효과 (말하는 동안 말풍선 살짝 커졌다 작아지기)
+      const bubble = document.getElementById('speechBubble');
+      utterance.onstart = () => bubble.classList.add('speaking');
+      utterance.onend = () => bubble.classList.remove('speaking');
+      utterance.onerror = () => bubble.classList.remove('speaking');
+
+      window.speechSynthesis.speak(utterance);
+    }
+
+    // 🔊 통합 음소거 토글
     function toggleSound() {
       soundEnabled = !soundEnabled;
       localStorage.setItem('soundEnabled', soundEnabled);
       document.getElementById('soundToggle').textContent = soundEnabled ? '🔊' : '🔇';
-      if (soundEnabled) playBlip(); // 켤 때 삐빅 미리듣기
+      if (soundEnabled) {
+        playBlip();
+      } else {
+        // 끄는 순간 재생 중 음성도 중지
+        window.speechSynthesis.cancel();
+        document.getElementById('speechBubble').classList.remove('speaking');
+      }
     }
 
-    // 초기 버튼 상태 반영
     document.getElementById('soundToggle').textContent = soundEnabled ? '🔊' : '🔇';
-    // ================================
+    // ==================================
 
     function getPm10Grade(value) {
       const v = parseInt(value, 10);
@@ -409,7 +452,9 @@
       bubble.textContent = text;
       setTimeout(() => {
         bubble.classList.add('show');
-        playBlip(); // 💬 말풍선 삐빅!
+        playBlip();
+        // 💬 → 🎤 삐빅 후 살짝 딜레이 뒤 음성 재생
+        setTimeout(() => speakText(text, grade), 350);
       }, 500);
     }
 
@@ -499,7 +544,6 @@
         return;
       }
 
-      // 🎵 버튼 클릭 = 사용자 상호작용 → 오디오 초기화 (자동재생 제한 해제)
       initAudio();
 
       btn.disabled = true;
@@ -508,8 +552,9 @@
       status.textContent = '📍 위치 확인 중...';
 
       // 초기화
+      window.speechSynthesis.cancel(); // 이전 음성 정지
       document.getElementById('character').classList.add('hidden-char');
-      document.getElementById('speechBubble').classList.remove('show');
+      document.getElementById('speechBubble').classList.remove('show', 'speaking');
       document.body.classList.remove('bg-1', 'bg-2', 'bg-3', 'bg-4');
       document.getElementById('pm25Gauge').style.width = '0%';
       document.getElementById('pm10Gauge').style.width = '0%';
@@ -561,7 +606,6 @@
 
         status.textContent = '✅ 최신 정보로 업데이트 완료';
 
-        // 🔔 웰컴 딩~
         playDing();
 
         result.classList.remove('hidden');
