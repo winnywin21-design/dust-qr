@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>내 주변 미세먼지</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 24px;
+      background: #f5f7fa;
+      color: #222;
+    }
+    h1 {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 24px;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      margin-bottom: 16px;
+    }
+    .status {
+      font-size: 16px;
+      color: #555;
+    }
+    button {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      border: none;
+      border-radius: 12px;
+      background: #3b82f6;
+      color: white;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #94a3b8;
+    }
+  </style>
+</head>
+<body>
+  <h1>🌫️ 내 주변 미세먼지</h1>
+  <p class="subtitle">위치를 기반으로 실시간 대기질을 확인합니다</p>
+
+  <div class="card">
+    <p class="status" id="status">위치 권한을 허용해주세요.</p>
+  </div>
+
+  <button id="checkBtn" onclick="getLocation()">내 위치 확인하기</button>
+
+  <script>
+    function getLocation() {
+      const status = document.getElementById('status');
+      const btn = document.getElementById('checkBtn');
+
+      if (!navigator.geolocation) {
+        status.textContent = '이 브라우저는 위치 정보를 지원하지 않습니다.';
+        return;
+      }
+
+      btn.disabled = true;
+      status.textContent = '위치를 확인 중입니다...';
+
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const lat = position.coords.latitude.toFixed(5);
+          const lon = position.coords.longitude.toFixed(5);
+          status.innerHTML = `✅ 위치 확인 완료<br>위도: ${lat}<br>경도: ${lon}`;
+          btn.disabled = false;
+        },
+        (error) => {
+          status.textContent = '⚠️ 위치를 가져오지 못했습니다: ' + error.message;
+          btn.disabled = false;
+        }
+      );
+    }
+  </script>
+</body>
+</html>
