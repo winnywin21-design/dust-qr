@@ -5,62 +5,151 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>내 주변 미세먼지</title>
   <style>
+    * { box-sizing: border-box; }
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", sans-serif;
       max-width: 480px;
       margin: 0 auto;
       padding: 24px;
       background: #f5f7fa;
-      color: #222;
+      color: #1f2937;
+      min-height: 100vh;
     }
     h1 {
       font-size: 24px;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
     }
     .subtitle {
-      color: #666;
+      color: #6b7280;
       margin-bottom: 24px;
+      font-size: 14px;
     }
     .card {
       background: white;
       border-radius: 16px;
       padding: 24px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
       margin-bottom: 16px;
     }
     .status {
-      font-size: 16px;
-      color: #555;
+      font-size: 15px;
+      color: #374151;
+      line-height: 1.6;
     }
     button {
       width: 100%;
-      padding: 14px;
+      padding: 16px;
       font-size: 16px;
+      font-weight: 600;
       border: none;
       border-radius: 12px;
       background: #3b82f6;
       color: white;
       cursor: pointer;
+      transition: background 0.2s;
     }
-    button:disabled {
-      background: #94a3b8;
+    button:hover:not(:disabled) { background: #2563eb; }
+    button:disabled { background: #94a3b8; cursor: not-allowed; }
+    .hidden { display: none; }
+
+    /* 결과 카드 */
+    .result-station {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 16px;
+    }
+    .result-station strong { color: #1f2937; font-size: 15px; }
+    .metric {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 14px 0;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .metric:last-of-type { border-bottom: none; }
+    .metric-label { font-size: 14px; color: #6b7280; }
+    .metric-value { font-size: 22px; font-weight: 700; }
+    .metric-unit { font-size: 12px; color: #9ca3af; margin-left: 4px; }
+    .grade {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      margin-left: 8px;
+    }
+    .grade-1 { background: #dbeafe; color: #1d4ed8; }  /* 좋음 */
+    .grade-2 { background: #d1fae5; color: #047857; }  /* 보통 */
+    .grade-3 { background: #fed7aa; color: #c2410c; }  /* 나쁨 */
+    .grade-4 { background: #fecaca; color: #b91c1c; }  /* 매우나쁨 */
+    .time {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-top: 12px;
+      text-align: right;
     }
   </style>
 </head>
 <body>
   <h1>🌫️ 내 주변 미세먼지</h1>
-  <p class="subtitle">위치를 기반으로 실시간 대기질을 확인합니다</p>
+  <p class="subtitle">실시간 위치 기반 대기질 정보</p>
 
   <div class="card">
-    <p class="status" id="status">위치 권한을 허용해주세요.</p>
+    <p class="status" id="status">버튼을 눌러 내 주변 공기질을 확인해보세요.</p>
   </div>
 
-  <button id="checkBtn" onclick="getLocation()">내 위치 확인하기</button>
+  <div class="card hidden" id="result">
+    <div class="result-station" id="resultStation"></div>
+    <div class="metric">
+      <span class="metric-label">초미세먼지 PM2.5</span>
+      <span>
+        <span class="metric-value" id="pm25">-</span>
+        <span class="metric-unit">㎍/㎥</span>
+        <span class="grade" id="pm25Grade"></span>
+      </span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">미세먼지 PM10</span>
+      <span>
+        <span class="metric-value" id="pm10">-</span>
+        <span class="metric-unit">㎍/㎥</span>
+        <span class="grade" id="pm10Grade"></span>
+      </span>
+    </div>
+    <div class="metric">
+      <span class="metric-label">통합대기환경지수</span>
+      <span>
+        <span class="metric-value" id="khai">-</span>
+        <span class="grade" id="khaiGrade"></span>
+      </span>
+    </div>
+    <p class="time" id="dataTime"></p>
+  </div>
+
+  <button id="checkBtn" onclick="checkDust()">내 주변 미세먼지 확인</button>
 
   <script>
-    function getLocation() {
+    const GRADE_LABELS = {
+      '1': '좋음',
+      '2': '보통',
+      '3': '나쁨',
+      '4': '매우나쁨'
+    };
+
+    function setGrade(el, grade) {
+      el.className = 'grade';
+      if (!grade || !GRADE_LABELS[grade]) {
+        el.textContent = '';
+        return;
+      }
+      el.classList.add('grade-' + grade);
+      el.textContent = GRADE_LABELS[grade];
+    }
+
+    async function checkDust() {
       const status = document.getElementById('status');
       const btn = document.getElementById('checkBtn');
+      const result = document.getElementById('result');
 
       if (!navigator.geolocation) {
         status.textContent = '이 브라우저는 위치 정보를 지원하지 않습니다.';
@@ -68,21 +157,4 @@
       }
 
       btn.disabled = true;
-      status.textContent = '위치를 확인 중입니다...';
-
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const lat = position.coords.latitude.toFixed(5);
-          const lon = position.coords.longitude.toFixed(5);
-          status.innerHTML = `✅ 위치 확인 완료<br>위도: ${lat}<br>경도: ${lon}`;
-          btn.disabled = false;
-        },
-        (error) => {
-          status.textContent = '⚠️ 위치를 가져오지 못했습니다: ' + error.message;
-          btn.disabled = false;
-        }
-      );
-    }
-  </script>
-</body>
-</html>
+      res

@@ -1,0 +1,24 @@
+{
+  "name": "dust-qr",
+  "version": "1.0.0",
+  "description": "미세먼지 QR 웹앱",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/winnywin21-design/dust-qr.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/winnywin21-design/dust-qr/issues"
+  },
+  "homepage": "https://github.com/winnywin21-design/dust-qr#readme",
+  "dependencies": {
+    "proj4": "^2.20.8"
+  }
+}
