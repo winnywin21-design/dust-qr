@@ -15,15 +15,8 @@
       color: #1f2937;
       min-height: 100vh;
     }
-    h1 {
-      font-size: 24px;
-      margin-bottom: 4px;
-    }
-    .subtitle {
-      color: #6b7280;
-      margin-bottom: 24px;
-      font-size: 14px;
-    }
+    h1 { font-size: 24px; margin-bottom: 4px; }
+    .subtitle { color: #6b7280; margin-bottom: 24px; font-size: 14px; }
     .card {
       background: white;
       border-radius: 16px;
@@ -31,11 +24,7 @@
       box-shadow: 0 2px 12px rgba(0,0,0,0.06);
       margin-bottom: 16px;
     }
-    .status {
-      font-size: 15px;
-      color: #374151;
-      line-height: 1.6;
-    }
+    .status { font-size: 15px; color: #374151; line-height: 1.6; }
     button {
       width: 100%;
       padding: 16px;
@@ -51,13 +40,7 @@
     button:hover:not(:disabled) { background: #2563eb; }
     button:disabled { background: #94a3b8; cursor: not-allowed; }
     .hidden { display: none; }
-
-    /* 결과 카드 */
-    .result-station {
-      font-size: 13px;
-      color: #6b7280;
-      margin-bottom: 16px;
-    }
+    .result-station { font-size: 13px; color: #6b7280; margin-bottom: 16px; }
     .result-station strong { color: #1f2937; font-size: 15px; }
     .metric {
       display: flex;
@@ -78,16 +61,11 @@
       font-weight: 600;
       margin-left: 8px;
     }
-    .grade-1 { background: #dbeafe; color: #1d4ed8; }  /* 좋음 */
-    .grade-2 { background: #d1fae5; color: #047857; }  /* 보통 */
-    .grade-3 { background: #fed7aa; color: #c2410c; }  /* 나쁨 */
-    .grade-4 { background: #fecaca; color: #b91c1c; }  /* 매우나쁨 */
-    .time {
-      font-size: 12px;
-      color: #9ca3af;
-      margin-top: 12px;
-      text-align: right;
-    }
+    .grade-1 { background: #dbeafe; color: #1d4ed8; }
+    .grade-2 { background: #d1fae5; color: #047857; }
+    .grade-3 { background: #fed7aa; color: #c2410c; }
+    .grade-4 { background: #fecaca; color: #b91c1c; }
+    .time { font-size: 12px; color: #9ca3af; margin-top: 12px; text-align: right; }
   </style>
 </head>
 <body>
@@ -129,12 +107,7 @@
   <button id="checkBtn" onclick="checkDust()">내 주변 미세먼지 확인</button>
 
   <script>
-    const GRADE_LABELS = {
-      '1': '좋음',
-      '2': '보통',
-      '3': '나쁨',
-      '4': '매우나쁨'
-    };
+    const GRADE_LABELS = { '1': '좋음', '2': '보통', '3': '나쁨', '4': '매우나쁨' };
 
     function setGrade(el, grade) {
       el.className = 'grade';
@@ -157,4 +130,52 @@
       }
 
       btn.disabled = true;
-      res
+      result.classList.add('hidden');
+      status.textContent = '📍 위치 확인 중...';
+
+      try {
+        const position = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, {
+            enableHighAccuracy: true,
+            timeout: 10000
+          });
+        });
+
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        status.textContent = '🌫️ 미세먼지 정보 가져오는 중...';
+
+        const res = await fetch('/api/dust?lat=' + lat + '&lon=' + lon);
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || '데이터를 받지 못했습니다');
+        }
+        const data = await res.json();
+
+        document.getElementById('resultStation').innerHTML =
+          '측정소: <strong>' + data.stationName + '</strong> (약 ' + data.distance + 'km)<br>' +
+          (data.stationAddr || '');
+
+        document.getElementById('pm25').textContent = data.pm25 ?? '-';
+        setGrade(document.getElementById('pm25Grade'), data.pm25Grade);
+
+        document.getElementById('pm10').textContent = data.pm10 ?? '-';
+        setGrade(document.getElementById('pm10Grade'), data.pm10Grade);
+
+        document.getElementById('khai').textContent = data.khai ?? '-';
+        setGrade(document.getElementById('khaiGrade'), data.khaiGrade);
+
+        document.getElementById('dataTime').textContent =
+          data.dataTime ? '측정 시각: ' + data.dataTime : '';
+
+        status.textContent = '✅ 최신 정보로 업데이트 완료';
+        result.classList.remove('hidden');
+      } catch (err) {
+        status.textContent = '⚠️ 오류: ' + err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    }
+  </script>
+</body>
+</html>
