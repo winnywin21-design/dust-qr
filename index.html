@@ -23,7 +23,6 @@
     body.bg-3 { background: linear-gradient(180deg, #ffedd5 0%, #fed7aa 100%); }
     body.bg-4 { background: linear-gradient(180deg, #fee2e2 0%, #fecaca 100%); }
 
-    /* 🌫️ 파티클 캔버스 (배경 뒤) */
     #particles {
       position: fixed;
       top: 0; left: 0;
@@ -43,7 +42,6 @@
     h1 { font-size: 24px; margin-bottom: 4px; }
     .subtitle { color: #6b7280; margin-bottom: 24px; font-size: 14px; }
 
-    /* 👾 캐릭터 + 말풍선 영역 */
     .character-area {
       position: relative;
       text-align: center;
@@ -66,8 +64,9 @@
     /* 💬 말풍선 */
     .speech-bubble {
       position: absolute;
-      top: 10px;
-      right: calc(50% - 140px);
+      top: 30px;
+      left: 50%;
+      margin-left: 60px;
       background: white;
       padding: 10px 16px;
       border-radius: 16px;
@@ -79,6 +78,7 @@
       transition: all 0.3s ease;
       max-width: 140px;
       line-height: 1.4;
+      white-space: nowrap;
     }
     .speech-bubble.show {
       opacity: 1;
@@ -137,7 +137,6 @@
     .result-station { font-size: 13px; color: #6b7280; margin-bottom: 16px; }
     .result-station strong { color: #1f2937; font-size: 15px; }
 
-    /* 📊 게이지 바가 있는 metric */
     .metric {
       padding: 14px 0;
       border-bottom: 1px solid #f3f4f6;
@@ -202,14 +201,12 @@
   </style>
 </head>
 <body>
-  <!-- 🌫️ 파티클 배경 -->
   <canvas id="particles"></canvas>
 
   <div class="container">
     <h1>🌫️ 내 주변 미세먼지</h1>
     <p class="subtitle">실시간 위치 기반 대기질 정보</p>
 
-    <!-- 👾 캐릭터 + 💬 말풍선 -->
     <div class="character-area">
       <div class="character hidden-char" id="character">❓</div>
       <div class="speech-bubble" id="speechBubble"></div>
@@ -265,7 +262,6 @@
 
     const CHARACTERS = { '1': '😊', '2': '🙂', '3': '😷', '4': '🤢' };
 
-    // 💬 말풍선 대사 풀
     const SPEECHES = {
       '1': ['오늘 산책 어때요? 🌿', '창문 활짝 열어봐요!', '숨 쉬기 딱 좋은 날 ✨'],
       '2': ['나쁘지 않네요~', '평범한 하루예요', '외출 OK, 조심히!'],
@@ -273,7 +269,6 @@
       '4': ['얼른 집에 가요... 😢', '외출은 피해요', '공기청정기 ON!']
     };
 
-    // 🌫️ 파티클 설정
     const PARTICLE_CONFIG = {
       '1': { count: 15, color: 'rgba(59, 130, 246, 0.3)', speed: 0.3, size: 3 },
       '2': { count: 30, color: 'rgba(234, 179, 8, 0.3)', speed: 0.5, size: 3 },
@@ -281,7 +276,6 @@
       '4': { count: 100, color: 'rgba(185, 28, 28, 0.4)', speed: 1.2, size: 5 }
     };
 
-    // 📊 PM 수치 기준 (게이지 최대값)
     const PM25_MAX = 75;
     const PM10_MAX = 150;
 
@@ -316,28 +310,21 @@
       }
     }
 
-    // 💬 말풍선 표시
     function showSpeech(grade) {
       const bubble = document.getElementById('speechBubble');
-      if (!grade || !SPEECHES[grade]) {
-        bubble.classList.remove('show');
-        return;
-      }
+      if (!grade || !SPEECHES[grade]) { bubble.classList.remove('show'); return; }
       const options = SPEECHES[grade];
       const text = options[Math.floor(Math.random() * options.length)];
       bubble.textContent = text;
-      // 약간 딜레이 후 등장
       setTimeout(() => bubble.classList.add('show'), 500);
     }
 
-    // 📊 게이지 바 채우기
     function setGauge(el, value, max, grade) {
       const v = parseInt(value, 10);
       if (isNaN(v)) return;
       const percent = Math.min((v / max) * 100, 100);
       el.className = 'gauge-fill';
       if (grade) el.classList.add('g' + grade);
-      // 약간 딜레이 후 채워지게
       setTimeout(() => { el.style.width = percent + '%'; }, 400);
     }
 
@@ -356,7 +343,6 @@
       requestAnimationFrame(update);
     }
 
-    // 🌫️ 파티클 엔진
     const canvas = document.getElementById('particles');
     const ctx = canvas.getContext('2d');
     let particles = [];
@@ -406,7 +392,6 @@
       }
     }
 
-    // 기본 파티클 시작
     createParticles(currentConfig);
     animateParticles();
 
@@ -424,6 +409,14 @@
       result.classList.add('hidden');
       result.classList.remove('appear');
       status.textContent = '📍 위치 확인 중...';
+
+      // 🧹 이전 결과 초기화
+      document.getElementById('character').classList.add('hidden-char');
+      document.getElementById('speechBubble').classList.remove('show');
+      document.body.classList.remove('bg-1', 'bg-2', 'bg-3', 'bg-4');
+      document.getElementById('pm25Gauge').style.width = '0%';
+      document.getElementById('pm10Gauge').style.width = '0%';
+      setParticles('2');
 
       try {
         const position = await new Promise((resolve, reject) => {
@@ -461,13 +454,9 @@
             '<div>' + PM10_ADVICE[pm10Grade].message + '</div>';
         }
 
-        // 🎨 배경색
         setBodyGrade(pm10Grade);
-        // 🌫️ 파티클
         setParticles(pm10Grade);
-        // 👾 캐릭터
         setCharacter(pm10Grade);
-        // 💬 말풍선
         showSpeech(pm10Grade);
 
         document.getElementById('dataTime').textContent =
@@ -479,7 +468,6 @@
         void result.offsetWidth;
         result.classList.add('appear');
 
-        // 🔢 숫자 + 📊 게이지 (동시에)
         setTimeout(() => {
           animateNumber(document.getElementById('pm25'), data.pm25);
           animateNumber(document.getElementById('pm10'), data.pm10);
