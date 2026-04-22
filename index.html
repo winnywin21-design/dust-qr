@@ -66,6 +66,21 @@
     .grade-3 { background: #fed7aa; color: #c2410c; }
     .grade-4 { background: #fecaca; color: #b91c1c; }
     .time { font-size: 12px; color: #9ca3af; margin-top: 12px; text-align: right; }
+
+    /* 등급별 조언 메시지 */
+    .advice {
+      padding: 16px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.6;
+      margin: 16px 0;
+      text-align: center;
+    }
+    .advice-1 { background: #dbeafe; color: #1e40af; }
+    .advice-2 { background: #d1fae5; color: #065f46; }
+    .advice-3 { background: #fed7aa; color: #9a3412; }
+    .advice-4 { background: #fecaca; color: #991b1b; }
+    .advice-title { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
   </style>
 </head>
 <body>
@@ -78,6 +93,7 @@
 
   <div class="card hidden" id="result">
     <div class="result-station" id="resultStation"></div>
+    <div class="advice" id="advice"></div>
     <div class="metric">
       <span class="metric-label">초미세먼지 PM2.5</span>
       <span>
@@ -94,13 +110,6 @@
         <span class="grade" id="pm10Grade"></span>
       </span>
     </div>
-    <div class="metric">
-      <span class="metric-label">통합대기환경지수</span>
-      <span>
-        <span class="metric-value" id="khai">-</span>
-        <span class="grade" id="khaiGrade"></span>
-      </span>
-    </div>
     <p class="time" id="dataTime"></p>
   </div>
 
@@ -108,6 +117,24 @@
 
   <script>
     const GRADE_LABELS = { '1': '좋음', '2': '보통', '3': '나쁨', '4': '매우나쁨' };
+
+    // PM10 기준 등급별 메시지
+    const PM10_ADVICE = {
+      '1': { title: '🌿 공기가 쾌적해요!', message: '야외 활동하기 좋은 날이에요.' },
+      '2': { title: '😊 보통 수준이에요', message: '민감하신 분은 장시간 야외활동 시 주의하세요.' },
+      '3': { title: '⚠️ 공기질이 좋지 않아요', message: '외출 시 KF80 이상 마스크 착용을 권장해요.' },
+      '4': { title: '🚨 공기질이 매우 나빠요!', message: '가급적 외출을 자제하고, 나가실 땐 KF94 마스크를 착용해 주세요.' }
+    };
+
+    // PM10 값으로 등급 판정 (API 등급이 없을 경우 대비)
+    function getPm10Grade(value) {
+      const v = parseInt(value, 10);
+      if (isNaN(v)) return null;
+      if (v <= 30) return '1';
+      if (v <= 80) return '2';
+      if (v <= 150) return '3';
+      return '4';
+    }
 
     function setGrade(el, grade) {
       el.className = 'grade';
@@ -162,8 +189,18 @@
         document.getElementById('pm10').textContent = data.pm10 ?? '-';
         setGrade(document.getElementById('pm10Grade'), data.pm10Grade);
 
-        document.getElementById('khai').textContent = data.khai ?? '-';
-        setGrade(document.getElementById('khaiGrade'), data.khaiGrade);
+        // PM10 기준 등급별 조언 메시지
+        const pm10Grade = data.pm10Grade || getPm10Grade(data.pm10);
+        const adviceEl = document.getElementById('advice');
+        if (pm10Grade && PM10_ADVICE[pm10Grade]) {
+          adviceEl.className = 'advice advice-' + pm10Grade;
+          adviceEl.innerHTML =
+            '<div class="advice-title">' + PM10_ADVICE[pm10Grade].title + '</div>' +
+            '<div>' + PM10_ADVICE[pm10Grade].message + '</div>';
+        } else {
+          adviceEl.className = 'advice';
+          adviceEl.textContent = '';
+        }
 
         document.getElementById('dataTime').textContent =
           data.dataTime ? '측정 시각: ' + data.dataTime : '';
@@ -176,6 +213,7 @@
         btn.disabled = false;
       }
     }
+
     // 페이지 열리자마자 자동 실행
     window.addEventListener('load', checkDust);
   </script>
