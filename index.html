@@ -74,11 +74,27 @@
     }
 
     /* 캐릭터 컨테이너 (반짝이 기준점 + 이중 애니메이션 구조) */
-    .character-wrap {
+.character-wrap {
       position: relative;
       display: inline-block;
       width: 140px;
       height: 140px;
+      border-radius: 50%;
+      transition: background 0.8s ease;
+    }
+
+    /* 🌈 등급별 그라데이션 배경 */
+    body.bg-1 .character-wrap {
+      background: radial-gradient(circle, rgba(59, 130, 246, 0.25) 0%, rgba(59, 130, 246, 0) 70%);
+    }
+    body.bg-2 .character-wrap {
+      background: radial-gradient(circle, rgba(234, 179, 8, 0.25) 0%, rgba(234, 179, 8, 0) 70%);
+    }
+    body.bg-3 .character-wrap {
+      background: radial-gradient(circle, rgba(234, 88, 12, 0.3) 0%, rgba(234, 88, 12, 0) 70%);
+    }
+    body.bg-4 .character-wrap {
+      background: radial-gradient(circle, rgba(185, 28, 28, 0.3) 0%, rgba(185, 28, 28, 0) 70%);
     }
 
     /* 🖼️ 캐릭터 이미지 — 복합 움직임 */
