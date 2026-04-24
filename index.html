@@ -72,7 +72,8 @@
       margin: 16px 0 12px;
       min-height: 150px;
     }
-    /* 🖼️ 캐릭터 이미지 */
+
+    /* 🖼️ 캐릭터 이미지 + 움직임 */
     .character {
       width: 140px;
       height: 140px;
@@ -314,7 +315,6 @@
     <p class="subtitle">실시간 위치 기반 대기질 정보</p>
 
     <div class="character-area">
-      <!-- 🖼️ 이미지 태그로 변경 -->
       <img class="character hidden-char" id="character" src="" alt="캐릭터">
       <div class="speech-bubble" id="speechBubble"></div>
     </div>
@@ -374,7 +374,6 @@
   <script>
     const GRADE_LABELS = { '1': '좋음', '2': '보통', '3': '나쁨', '4': '매우나쁨' };
 
-    // 📝 PM2.5 기준 조언 메시지
     const PM25_ADVICE = {
       '1': { title: '🌿 공기가 쾌적해요!', message: '야외 활동하기 좋은 날이에요.' },
       '2': { title: '😊 보통 수준이에요', message: '민감하신 분은 장시간 야외활동 시 주의하세요.' },
@@ -382,7 +381,6 @@
       '4': { title: '🚨 공기질이 매우 나빠요!', message: '가급적 외출을 자제하고, 나가실 땐 KF94 마스크를 착용해 주세요.' }
     };
 
-    // 🖼️ 캐릭터 이미지 경로
     const CHARACTERS = {
       '1': '/images/good.png',
       '2': '/images/normal.png',
@@ -497,14 +495,13 @@
     }
     document.getElementById('soundToggle').textContent = soundEnabled ? '🔊' : '🔇';
 
-    // 🆕 PM2.5 기준 등급 판정
     function getPm25Grade(value) {
       const v = parseInt(value, 10);
       if (isNaN(v)) return null;
-      if (v <= 15) return '1';   // 좋음
-      if (v <= 35) return '2';   // 보통
-      if (v <= 75) return '3';   // 나쁨
-      return '4';                 // 매우나쁨
+      if (v <= 15) return '1';
+      if (v <= 35) return '2';
+      if (v <= 75) return '3';
+      return '4';
     }
 
     function setGrade(el, grade) {
@@ -519,19 +516,18 @@
       if (grade && GRADE_LABELS[grade]) document.body.classList.add('bg-' + grade);
     }
 
-    // 🖼️ 이미지로 캐릭터 변경
-function setCharacter(grade) {
+    // 🖼️ 캐릭터 설정 + 🎈 등장 애니메이션
+    function setCharacter(grade) {
       const charEl = document.getElementById('character');
       if (grade && CHARACTERS[grade]) {
         charEl.src = CHARACTERS[grade];
         charEl.classList.remove('hidden-char');
-        
-        // 🎈 등장 애니메이션 재생
+
+        // 등장 애니메이션 재시작
         charEl.classList.remove('entering');
-        void charEl.offsetWidth; // 강제 리플로우 (애니메이션 재시작)
+        void charEl.offsetWidth;
         charEl.classList.add('entering');
-        
-        // 애니메이션 끝나면 클래스 제거 (다음에 또 쓸 수 있게)
+
         setTimeout(() => charEl.classList.remove('entering'), 800);
       } else {
         charEl.classList.add('hidden-char');
@@ -539,7 +535,7 @@ function setCharacter(grade) {
       }
     }
 
-    // 🦘 클릭 시 점프
+    // 🦘 캐릭터 클릭 시 점프
     document.getElementById('character').addEventListener('click', function() {
       if (this.classList.contains('hidden-char')) return;
       this.classList.remove('jumping');
@@ -548,9 +544,8 @@ function setCharacter(grade) {
       playBlip();
       setTimeout(() => this.classList.remove('jumping'), 500);
     });
-    }
 
-function showSpeech(grade) {
+    function showSpeech(grade) {
       const bubble = document.getElementById('speechBubble');
       if (!grade || !SPEECHES[grade]) { bubble.classList.remove('show'); return; }
       const options = SPEECHES[grade];
@@ -559,14 +554,14 @@ function showSpeech(grade) {
       setTimeout(() => {
         bubble.classList.add('show');
         playBlip();
-        
-        // 💬 말풍선 뜰 때 캐릭터도 살짝 반응
+
+        // 💬 말풍선 뜰 때 캐릭터 반응
         const charEl = document.getElementById('character');
         charEl.classList.remove('reacting');
         void charEl.offsetWidth;
         charEl.classList.add('reacting');
         setTimeout(() => charEl.classList.remove('reacting'), 400);
-        
+
         setTimeout(() => speakText(text, grade), 350);
       }, 500);
     }
@@ -703,7 +698,6 @@ function showSpeech(grade) {
       setGrade(document.getElementById('pm25Grade'), data.pm25Grade);
       setGrade(document.getElementById('pm10Grade'), data.pm10Grade);
 
-      // 🆕 PM2.5 기준으로 모든 것 결정!
       const pm25Grade = data.pm25Grade || getPm25Grade(data.pm25);
 
       const adviceEl = document.getElementById('advice');
@@ -781,7 +775,7 @@ function showSpeech(grade) {
         const lon = position.coords.longitude;
         setProgress(40);
 
-const cache = getCache();
+        const cache = getCache();
         if (isCacheValid(cache, lat, lon)) {
           status.textContent = '⚡ 빠르게 불러왔어요';
           setProgress(70);
@@ -792,12 +786,10 @@ const cache = getCache();
             .then(r => r.ok ? r.json() : null)
             .then(freshData => {
               if (freshData && freshData.dataTime !== cache.data.dataTime) {
-                // 데이터가 바뀌었으면 업데이트
                 setCache(freshData, lat, lon);
                 renderData(freshData, { silent: true });
                 status.textContent = '✅ 최신 정보로 업데이트';
               } else if (freshData) {
-                // 데이터 같음 = 확인 완료
                 status.textContent = '✅ 최신 정보 확인 완료';
               }
             })
