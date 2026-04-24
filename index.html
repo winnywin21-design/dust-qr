@@ -665,8 +665,6 @@
         charEl.classList.add('entering');
         setTimeout(() => charEl.classList.remove('entering'), 800);
 
-        // 반짝이 시작
-        startSparkles();
 
         // 랜덤 점프 시작
         scheduleRandomHop();
@@ -674,7 +672,6 @@
         currentGrade = null;
         charEl.classList.add('hidden-char');
         charEl.src = '';
-        stopSparkles();
         stopRandomHop();
       }
     }
@@ -901,7 +898,6 @@
       document.getElementById('pm25Gauge').style.width = '0%';
       document.getElementById('pm10Gauge').style.width = '0%';
       setParticles('2');
-      stopSparkles();
       stopRandomHop();
 
       status.textContent = '📍 위치 확인 중...';
