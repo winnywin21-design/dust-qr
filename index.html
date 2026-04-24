@@ -80,8 +80,12 @@
       width: 140px;
       height: 140px;
       border-radius: 50%;
-      transition: background 0.8s ease;
+      opacity: 0;
+      transition: opacity 0.8s ease, background 0.8s ease;
     }
+
+    /* 캐릭터가 등장하면 그라데이션도 같이 나타남 */
+    .character-wrap.show { opacity: 1; }
 
     /* 🌈 등급별 그라데이션 배경 */
     body.bg-1 .character-wrap {
@@ -670,10 +674,12 @@
     // 🖼️ 캐릭터 설정 + 애니메이션 시작
     function setCharacter(grade) {
       const charEl = document.getElementById('character');
+      const wrapEl = document.getElementById('characterWrap');
       if (grade && CHARACTERS[grade]) {
         currentGrade = grade;
         charEl.src = CHARACTERS[grade];
         charEl.classList.remove('hidden-char');
+        wrapEl.classList.add('show');
 
         // 등장
         charEl.classList.remove('entering');
@@ -681,12 +687,12 @@
         charEl.classList.add('entering');
         setTimeout(() => charEl.classList.remove('entering'), 800);
 
-
         // 랜덤 점프 시작
         scheduleRandomHop();
       } else {
         currentGrade = null;
         charEl.classList.add('hidden-char');
+        wrapEl.classList.remove('show');
         charEl.src = '';
         stopRandomHop();
       }
@@ -909,6 +915,7 @@
 
       window.speechSynthesis.cancel();
       document.getElementById('character').classList.add('hidden-char');
+      document.getElementById('characterWrap').classList.remove('show');
       document.getElementById('speechBubble').classList.remove('show', 'speaking');
       document.body.classList.remove('bg-1', 'bg-2', 'bg-3', 'bg-4');
       document.getElementById('pm25Gauge').style.width = '0%';
