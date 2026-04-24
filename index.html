@@ -78,15 +78,51 @@
       height: 140px;
       display: inline-block;
       object-fit: contain;
-      animation: float 3s ease-in-out infinite;
+      animation: floatBreathe 3s ease-in-out infinite;
       transition: opacity 0.5s ease;
       border-radius: 12px;
-      
+      cursor: pointer;
+      user-select: none;
+      -webkit-user-drag: none;
     }
     .character.hidden-char { opacity: 0; pointer-events: none; }
-    @keyframes float {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(-12px); }
+
+    /* 💓 기본: 둥실 + 숨쉬기 */
+    @keyframes floatBreathe {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-12px) scale(1.03); }
+    }
+
+    /* 🎈 등장: 통통 튀며 나타남 */
+    .character.entering {
+      animation: bounceIn 0.8s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+    }
+    @keyframes bounceIn {
+      0% { transform: translateY(-100px) scale(0.3); opacity: 0; }
+      60% { transform: translateY(10px) scale(1.1); opacity: 1; }
+      80% { transform: translateY(-5px) scale(0.95); }
+      100% { transform: translateY(0) scale(1); opacity: 1; }
+    }
+
+    /* 🦘 클릭 시 점프 */
+    .character.jumping {
+      animation: jumpRotate 0.5s ease-out;
+    }
+    @keyframes jumpRotate {
+      0% { transform: translateY(0) rotate(0deg); }
+      30% { transform: translateY(-25px) rotate(-8deg); }
+      60% { transform: translateY(-15px) rotate(8deg); }
+      100% { transform: translateY(0) rotate(0deg); }
+    }
+
+    /* 💬 말풍선 반응 */
+    .character.reacting {
+      animation: reactHop 0.4s ease-out;
+    }
+    @keyframes reactHop {
+      0% { transform: translateY(0) scale(1); }
+      40% { transform: translateY(-10px) scale(1.05); }
+      100% { transform: translateY(0) scale(1); }
     }
 
     .speech-bubble {
@@ -484,18 +520,37 @@
     }
 
     // 🖼️ 이미지로 캐릭터 변경
-    function setCharacter(grade) {
+function setCharacter(grade) {
       const charEl = document.getElementById('character');
       if (grade && CHARACTERS[grade]) {
         charEl.src = CHARACTERS[grade];
         charEl.classList.remove('hidden-char');
+        
+        // 🎈 등장 애니메이션 재생
+        charEl.classList.remove('entering');
+        void charEl.offsetWidth; // 강제 리플로우 (애니메이션 재시작)
+        charEl.classList.add('entering');
+        
+        // 애니메이션 끝나면 클래스 제거 (다음에 또 쓸 수 있게)
+        setTimeout(() => charEl.classList.remove('entering'), 800);
       } else {
         charEl.classList.add('hidden-char');
         charEl.src = '';
       }
     }
 
-    function showSpeech(grade) {
+    // 🦘 클릭 시 점프
+    document.getElementById('character').addEventListener('click', function() {
+      if (this.classList.contains('hidden-char')) return;
+      this.classList.remove('jumping');
+      void this.offsetWidth;
+      this.classList.add('jumping');
+      playBlip();
+      setTimeout(() => this.classList.remove('jumping'), 500);
+    });
+    }
+
+function showSpeech(grade) {
       const bubble = document.getElementById('speechBubble');
       if (!grade || !SPEECHES[grade]) { bubble.classList.remove('show'); return; }
       const options = SPEECHES[grade];
@@ -504,6 +559,14 @@
       setTimeout(() => {
         bubble.classList.add('show');
         playBlip();
+        
+        // 💬 말풍선 뜰 때 캐릭터도 살짝 반응
+        const charEl = document.getElementById('character');
+        charEl.classList.remove('reacting');
+        void charEl.offsetWidth;
+        charEl.classList.add('reacting');
+        setTimeout(() => charEl.classList.remove('reacting'), 400);
+        
         setTimeout(() => speakText(text, grade), 350);
       }, 500);
     }
