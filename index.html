@@ -70,14 +70,17 @@
       position: relative;
       text-align: center;
       margin: 16px 0 24px;
-      min-height: 120px;
+      min-height: 160px;
     }
+    /* 🖼️ 캐릭터 이미지 */
     .character {
-      font-size: 96px;
-      line-height: 1;
+      width: 140px;
+      height: 140px;
       display: inline-block;
+      object-fit: contain;
       animation: float 3s ease-in-out infinite;
       transition: opacity 0.5s ease;
+      border-radius: 12px;
     }
     .character.hidden-char { opacity: 0; pointer-events: none; }
     @keyframes float {
@@ -85,12 +88,11 @@
       50% { transform: translateY(-12px); }
     }
 
-    /* 💬 말풍선 — 여러 줄 허용, 넓힘 */
     .speech-bubble {
       position: absolute;
-      top: 20px;
+      top: 30px;
       left: 50%;
-      margin-left: 70px;
+      margin-left: 90px;
       background: white;
       padding: 10px 14px;
       border-radius: 16px;
@@ -130,7 +132,6 @@
       border-right: 10px solid white;
     }
 
-    /* 📊 프로그레스 바 */
     .progress-wrap {
       position: relative;
       height: 6px;
@@ -250,7 +251,6 @@
     .advice-4 { background: #fecaca; color: #991b1b; }
     .advice-title { font-weight: 700; font-size: 16px; margin-bottom: 4px; }
 
-    /* 🖼️ 스켈레톤 UI */
     .skeleton {
       background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
       background-size: 200% 100%;
@@ -263,16 +263,8 @@
       0% { background-position: 200% 0; }
       100% { background-position: -200% 0; }
     }
-    .skeleton-line {
-      height: 14px;
-      margin: 6px 0;
-      border-radius: 6px;
-    }
-    .skeleton-block {
-      height: 40px;
-      margin: 10px 0;
-      border-radius: 8px;
-    }
+    .skeleton-line { height: 14px; margin: 6px 0; border-radius: 6px; }
+    .skeleton-block { height: 40px; margin: 10px 0; border-radius: 8px; }
   </style>
 </head>
 <body>
@@ -285,11 +277,11 @@
     <p class="subtitle">실시간 위치 기반 대기질 정보</p>
 
     <div class="character-area">
-      <div class="character hidden-char" id="character">❓</div>
+      <!-- 🖼️ 이미지 태그로 변경 -->
+      <img class="character hidden-char" id="character" src="" alt="캐릭터">
       <div class="speech-bubble" id="speechBubble"></div>
     </div>
 
-    <!-- 📊 프로그레스 바 -->
     <div class="progress-wrap" id="progressWrap">
       <div class="progress-bar" id="progressBar"></div>
     </div>
@@ -298,7 +290,6 @@
       <p class="status" id="status">버튼을 눌러 내 주변 공기질을 확인해보세요.</p>
     </div>
 
-    <!-- 🖼️ 스켈레톤 UI (로딩 중) -->
     <div class="card hidden" id="skeletonCard">
       <div class="skeleton skeleton-line" style="width: 70%;"></div>
       <div class="skeleton skeleton-line" style="width: 90%; margin-bottom: 20px;"></div>
@@ -346,14 +337,21 @@
   <script>
     const GRADE_LABELS = { '1': '좋음', '2': '보통', '3': '나쁨', '4': '매우나쁨' };
 
-    const PM10_ADVICE = {
+    // 📝 PM2.5 기준 조언 메시지
+    const PM25_ADVICE = {
       '1': { title: '🌿 공기가 쾌적해요!', message: '야외 활동하기 좋은 날이에요.' },
       '2': { title: '😊 보통 수준이에요', message: '민감하신 분은 장시간 야외활동 시 주의하세요.' },
       '3': { title: '⚠️ 공기질이 좋지 않아요', message: '외출 시 KF80 이상 마스크 착용을 권장해요.' },
       '4': { title: '🚨 공기질이 매우 나빠요!', message: '가급적 외출을 자제하고, 나가실 땐 KF94 마스크를 착용해 주세요.' }
     };
 
-    const CHARACTERS = { '1': '😊', '2': '🙂', '3': '😷', '4': '🤢' };
+    // 🖼️ 캐릭터 이미지 경로
+    const CHARACTERS = {
+      '1': '/images/good.png',
+      '2': '/images/normal.png',
+      '3': '/images/bad.png',
+      '4': '/images/very-bad.png'
+    };
 
     const SPEECHES = {
       '1': ['오늘 산책 어때요?', '창문 활짝 열어봐요!', '숨 쉬기 딱 좋은 날이에요!'],
@@ -379,12 +377,10 @@
     const PM25_MAX = 75;
     const PM10_MAX = 150;
 
-    // 💾 캐시 설정
     const CACHE_KEY = 'dustCache';
-    const CACHE_DURATION = 10 * 60 * 1000; // 10분
-    const CACHE_RADIUS = 500; // 500m
+    const CACHE_DURATION = 10 * 60 * 1000;
+    const CACHE_RADIUS = 500;
 
-    // 🎵 사운드 시스템
     let audioCtx = null;
     let soundEnabled = localStorage.getItem('soundEnabled') !== 'false';
     const VOLUME = 0.3;
@@ -423,7 +419,6 @@
       osc.stop(startTime + duration);
     }
 
-    // 🎤 음성 합성
     let koreanVoice = null;
     function loadKoreanVoice() {
       const voices = window.speechSynthesis.getVoices();
@@ -465,13 +460,14 @@
     }
     document.getElementById('soundToggle').textContent = soundEnabled ? '🔊' : '🔇';
 
-    function getPm10Grade(value) {
+    // 🆕 PM2.5 기준 등급 판정
+    function getPm25Grade(value) {
       const v = parseInt(value, 10);
       if (isNaN(v)) return null;
-      if (v <= 30) return '1';
-      if (v <= 80) return '2';
-      if (v <= 150) return '3';
-      return '4';
+      if (v <= 15) return '1';   // 좋음
+      if (v <= 35) return '2';   // 보통
+      if (v <= 75) return '3';   // 나쁨
+      return '4';                 // 매우나쁨
     }
 
     function setGrade(el, grade) {
@@ -486,13 +482,15 @@
       if (grade && GRADE_LABELS[grade]) document.body.classList.add('bg-' + grade);
     }
 
+    // 🖼️ 이미지로 캐릭터 변경
     function setCharacter(grade) {
       const charEl = document.getElementById('character');
       if (grade && CHARACTERS[grade]) {
-        charEl.textContent = CHARACTERS[grade];
+        charEl.src = CHARACTERS[grade];
         charEl.classList.remove('hidden-char');
       } else {
         charEl.classList.add('hidden-char');
+        charEl.src = '';
       }
     }
 
@@ -533,7 +531,6 @@
       requestAnimationFrame(update);
     }
 
-    // 📊 프로그레스 바
     function setProgress(percent) {
       document.getElementById('progressWrap').classList.add('show');
       document.getElementById('progressBar').style.width = percent + '%';
@@ -543,7 +540,6 @@
       setTimeout(() => { document.getElementById('progressBar').style.width = '0%'; }, 400);
     }
 
-    // 🖼️ 스켈레톤
     function showSkeleton() {
       document.getElementById('skeletonCard').classList.remove('hidden');
     }
@@ -551,11 +547,9 @@
       document.getElementById('skeletonCard').classList.add('hidden');
     }
 
-    // 💾 캐시 관련
     function getDistanceM(lat1, lon1, lat2, lon2) {
-      // 간단한 평면 근사 (500m 단위 정도에선 충분히 정확)
-      const dLat = (lat2 - lat1) * 111000; // 위도 1도 ≈ 111km
-      const dLon = (lon2 - lon1) * 88000;  // 경도 1도 ≈ 88km (한국 기준)
+      const dLat = (lat2 - lat1) * 111000;
+      const dLon = (lon2 - lon1) * 88000;
       return Math.sqrt(dLat * dLat + dLon * dLon);
     }
 
@@ -583,7 +577,6 @@
       return dist < CACHE_RADIUS;
     }
 
-    // 🌫️ 파티클
     const canvas = document.getElementById('particles');
     const ctx = canvas.getContext('2d');
     let particles = [];
@@ -636,7 +629,6 @@
     createParticles(currentConfig);
     animateParticles();
 
-    // 🎨 결과 렌더링
     function renderData(data, options = {}) {
       const { silent = false } = options;
 
@@ -647,24 +639,23 @@
       setGrade(document.getElementById('pm25Grade'), data.pm25Grade);
       setGrade(document.getElementById('pm10Grade'), data.pm10Grade);
 
-      const pm10Grade = data.pm10Grade || getPm10Grade(data.pm10);
-      const pm25Grade = data.pm25Grade || '2';
+      // 🆕 PM2.5 기준으로 모든 것 결정!
+      const pm25Grade = data.pm25Grade || getPm25Grade(data.pm25);
 
       const adviceEl = document.getElementById('advice');
-      if (pm10Grade && PM10_ADVICE[pm10Grade]) {
-        adviceEl.className = 'advice advice-' + pm10Grade;
+      if (pm25Grade && PM25_ADVICE[pm25Grade]) {
+        adviceEl.className = 'advice advice-' + pm25Grade;
         adviceEl.innerHTML =
-          '<div class="advice-title">' + PM10_ADVICE[pm10Grade].title + '</div>' +
-          '<div>' + PM10_ADVICE[pm10Grade].message + '</div>';
+          '<div class="advice-title">' + PM25_ADVICE[pm25Grade].title + '</div>' +
+          '<div>' + PM25_ADVICE[pm25Grade].message + '</div>';
       }
 
-      setBodyGrade(pm10Grade);
-      setParticles(pm10Grade);
-      setCharacter(pm10Grade);
+      setBodyGrade(pm25Grade);
+      setParticles(pm25Grade);
+      setCharacter(pm25Grade);
 
-      // silent = 백그라운드 업데이트, 음성/딩 생략
       if (!silent) {
-        showSpeech(pm10Grade);
+        showSpeech(pm25Grade);
         playDing();
       }
 
@@ -682,7 +673,7 @@
         animateNumber(document.getElementById('pm25'), data.pm25);
         animateNumber(document.getElementById('pm10'), data.pm10);
         setGauge(document.getElementById('pm25Gauge'), data.pm25, PM25_MAX, pm25Grade);
-        setGauge(document.getElementById('pm10Gauge'), data.pm10, PM10_MAX, pm10Grade);
+        setGauge(document.getElementById('pm10Gauge'), data.pm10, PM10_MAX, data.pm10Grade || pm25Grade);
       }, silent ? 0 : 300);
     }
 
@@ -702,7 +693,6 @@
       result.classList.add('hidden');
       result.classList.remove('appear');
 
-      // 초기화
       window.speechSynthesis.cancel();
       document.getElementById('character').classList.add('hidden-char');
       document.getElementById('speechBubble').classList.remove('show', 'speaking');
@@ -711,12 +701,10 @@
       document.getElementById('pm10Gauge').style.width = '0%';
       setParticles('2');
 
-      // 📊 프로그레스 시작
       status.textContent = '📍 위치 확인 중...';
       setProgress(20);
 
       try {
-        // ⚡ 빠른 GPS + 5분 캐시 허용
         const position = await new Promise((resolve, reject) => {
           navigator.geolocation.getCurrentPosition(resolve, reject, {
             enableHighAccuracy: false,
@@ -727,36 +715,30 @@
 
         const lat = position.coords.latitude;
         const lon = position.coords.longitude;
-
         setProgress(40);
 
-        // 💾 캐시 확인
         const cache = getCache();
         if (isCacheValid(cache, lat, lon)) {
-          // 🎉 캐시 히트 - 즉시 표시
           status.textContent = '✅ 저장된 정보 (최신 갱신 중...)';
           setProgress(70);
           renderData(cache.data);
           hideProgress();
 
-          // 🔄 백그라운드에서 최신 데이터 조용히 가져오기
           fetch('/api/dust?lat=' + lat + '&lon=' + lon)
             .then(r => r.ok ? r.json() : null)
             .then(freshData => {
               if (freshData && freshData.dataTime !== cache.data.dataTime) {
-                // 데이터가 바뀌었으면 조용히 업데이트
                 setCache(freshData, lat, lon);
                 renderData(freshData, { silent: true });
                 status.textContent = '✅ 최신 정보로 업데이트 완료';
               }
             })
-            .catch(() => {}); // 실패해도 조용히 무시
+            .catch(() => {});
 
           btn.disabled = false;
           return;
         }
 
-        // 캐시 없음 - 스켈레톤 UI + 정상 로딩
         showSkeleton();
         status.textContent = '🌫️ 측정소 찾는 중...';
         setProgress(60);
