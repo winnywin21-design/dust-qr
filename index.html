@@ -70,28 +70,54 @@
       position: relative;
       text-align: center;
       margin: 16px 0 12px;
-      min-height: 150px;
+      min-height: 160px;
     }
 
-    /* 🖼️ 캐릭터 이미지 + 움직임 */
-    .character {
+    /* 캐릭터 컨테이너 (반짝이 기준점 + 이중 애니메이션 구조) */
+    .character-wrap {
+      position: relative;
+      display: inline-block;
       width: 140px;
       height: 140px;
-      display: inline-block;
+    }
+
+    /* 🖼️ 캐릭터 이미지 — 복합 움직임 */
+    .character {
+      width: 100%;
+      height: 100%;
+      display: block;
       object-fit: contain;
-      animation: floatBreathe 3s ease-in-out infinite;
       transition: opacity 0.5s ease;
-      border-radius: 12px;
       cursor: pointer;
       user-select: none;
       -webkit-user-drag: none;
+      /* 메인 애니메이션: 8자 움직임 + 숨쉬기 */
+      animation: figure8 6s ease-in-out infinite, breathe 3s ease-in-out infinite, tilt 4s ease-in-out infinite;
     }
     .character.hidden-char { opacity: 0; pointer-events: none; }
 
-    /* 💓 기본: 둥실 + 숨쉬기 */
-    @keyframes floatBreathe {
-      0%, 100% { transform: translateY(0) scale(1); }
-      50% { transform: translateY(-12px) scale(1.03); }
+    /* 🌊 8자 움직임 (좌우 + 위아래 복합) */
+    @keyframes figure8 {
+      0%   { transform: translate(0, 0); }
+      25%  { transform: translate(8px, -10px); }
+      50%  { transform: translate(0, -16px); }
+      75%  { transform: translate(-8px, -10px); }
+      100% { transform: translate(0, 0); }
+    }
+
+    /* 💓 숨쉬기 */
+    @keyframes breathe {
+      0%, 100% { filter: none; }
+      50% { filter: brightness(1.05); }
+    }
+
+    /* 🔄 고개 기울기 */
+    @keyframes tilt {
+      0%, 100% { rotate: 0deg; }
+      50% { rotate: 3deg; }
+    }
+    .character {
+      /* 위의 animation이 rotate를 쓰므로 tilt는 별도로 처리 */
     }
 
     /* 🎈 등장: 통통 튀며 나타남 */
@@ -105,14 +131,14 @@
       100% { transform: translateY(0) scale(1); opacity: 1; }
     }
 
-    /* 🦘 클릭 시 점프 */
+    /* 🦘 클릭 점프 */
     .character.jumping {
       animation: jumpRotate 0.5s ease-out;
     }
     @keyframes jumpRotate {
       0% { transform: translateY(0) rotate(0deg); }
-      30% { transform: translateY(-25px) rotate(-8deg); }
-      60% { transform: translateY(-15px) rotate(8deg); }
+      30% { transform: translateY(-30px) rotate(-10deg); }
+      60% { transform: translateY(-18px) rotate(10deg); }
       100% { transform: translateY(0) rotate(0deg); }
     }
 
@@ -122,8 +148,35 @@
     }
     @keyframes reactHop {
       0% { transform: translateY(0) scale(1); }
-      40% { transform: translateY(-10px) scale(1.05); }
+      40% { transform: translateY(-12px) scale(1.07); }
       100% { transform: translateY(0) scale(1); }
+    }
+
+    /* 🤸 랜덤 점프 (7~10초마다) */
+    .character.random-hop {
+      animation: randomHop 0.6s cubic-bezier(0.5, 0, 0.5, 1);
+    }
+    @keyframes randomHop {
+      0% { transform: translateY(0) scaleY(1); }
+      20% { transform: translateY(-5px) scaleY(0.9); }
+      50% { transform: translateY(-25px) scaleY(1.1); }
+      80% { transform: translateY(-5px) scaleY(0.9); }
+      100% { transform: translateY(0) scaleY(1); }
+    }
+
+    /* ✨ 반짝이 파티클 */
+    .sparkle {
+      position: absolute;
+      font-size: 14px;
+      pointer-events: none;
+      opacity: 0;
+      animation: sparkleFloat 3s ease-in-out infinite;
+    }
+    @keyframes sparkleFloat {
+      0% { opacity: 0; transform: translate(0, 0) scale(0.5) rotate(0deg); }
+      20% { opacity: 1; transform: translate(var(--mx, 10px), var(--my, -10px)) scale(1) rotate(180deg); }
+      80% { opacity: 1; transform: translate(calc(var(--mx, 10px) * 1.5), calc(var(--my, -10px) * 1.5)) scale(1) rotate(360deg); }
+      100% { opacity: 0; transform: translate(calc(var(--mx, 10px) * 2), calc(var(--my, -10px) * 2)) scale(0.5) rotate(540deg); }
     }
 
     .speech-bubble {
@@ -146,6 +199,7 @@
       white-space: normal;
       word-break: keep-all;
       text-align: center;
+      z-index: 5;
     }
     .speech-bubble.show {
       opacity: 1;
@@ -315,7 +369,10 @@
     <p class="subtitle">실시간 위치 기반 대기질 정보</p>
 
     <div class="character-area">
-      <img class="character hidden-char" id="character" src="" alt="캐릭터">
+      <div class="character-wrap" id="characterWrap">
+        <img class="character hidden-char" id="character" src="" alt="캐릭터">
+        <!-- 반짝이들 (JavaScript로 동적 생성) -->
+      </div>
       <div class="speech-bubble" id="speechBubble"></div>
     </div>
 
@@ -386,6 +443,14 @@
       '2': '/images/normal.png',
       '3': '/images/bad.png',
       '4': '/images/very-bad.png'
+    };
+
+    // ✨ 등급별 반짝이 이모지
+    const SPARKLE_EMOJIS = {
+      '1': ['✨', '⭐', '💫'],
+      '2': ['✨', '🌟'],
+      '3': ['💨', '🌫️'],
+      '4': ['💨', '☁️']
     };
 
     const SPEECHES = {
@@ -516,22 +581,101 @@
       if (grade && GRADE_LABELS[grade]) document.body.classList.add('bg-' + grade);
     }
 
-    // 🖼️ 캐릭터 설정 + 🎈 등장 애니메이션
+    // ✨ 반짝이 파티클 생성
+    let sparkleInterval = null;
+    let currentGrade = null;
+
+    function createSparkle() {
+      if (!currentGrade) return;
+      const wrap = document.getElementById('characterWrap');
+      const emojis = SPARKLE_EMOJIS[currentGrade] || SPARKLE_EMOJIS['2'];
+      const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+
+      const sparkle = document.createElement('span');
+      sparkle.className = 'sparkle';
+      sparkle.textContent = emoji;
+
+      // 랜덤 위치 (캐릭터 주변)
+      const startX = Math.random() * 140;
+      const startY = Math.random() * 140;
+      sparkle.style.left = startX + 'px';
+      sparkle.style.top = startY + 'px';
+
+      // 랜덤 이동 방향
+      const mx = (Math.random() - 0.5) * 40;
+      const my = -10 - Math.random() * 30; // 위쪽으로
+      sparkle.style.setProperty('--mx', mx + 'px');
+      sparkle.style.setProperty('--my', my + 'px');
+
+      // 랜덤 지속 시간
+      sparkle.style.animationDuration = (2 + Math.random() * 2) + 's';
+
+      wrap.appendChild(sparkle);
+
+      // 애니메이션 끝나면 제거
+      setTimeout(() => sparkle.remove(), 4500);
+    }
+
+    function startSparkles() {
+      if (sparkleInterval) clearInterval(sparkleInterval);
+      sparkleInterval = setInterval(createSparkle, 800);
+    }
+
+    function stopSparkles() {
+      if (sparkleInterval) {
+        clearInterval(sparkleInterval);
+        sparkleInterval = null;
+      }
+    }
+
+    // 🤸 랜덤 점프 (7~10초마다)
+    let randomHopTimer = null;
+
+    function scheduleRandomHop() {
+      clearTimeout(randomHopTimer);
+      const delay = 7000 + Math.random() * 3000; // 7~10초
+      randomHopTimer = setTimeout(() => {
+        const charEl = document.getElementById('character');
+        if (!charEl.classList.contains('hidden-char')) {
+          charEl.classList.remove('random-hop');
+          void charEl.offsetWidth;
+          charEl.classList.add('random-hop');
+          setTimeout(() => charEl.classList.remove('random-hop'), 600);
+        }
+        scheduleRandomHop(); // 다음 점프 예약
+      }, delay);
+    }
+
+    function stopRandomHop() {
+      clearTimeout(randomHopTimer);
+      randomHopTimer = null;
+    }
+
+    // 🖼️ 캐릭터 설정 + 애니메이션 시작
     function setCharacter(grade) {
       const charEl = document.getElementById('character');
       if (grade && CHARACTERS[grade]) {
+        currentGrade = grade;
         charEl.src = CHARACTERS[grade];
         charEl.classList.remove('hidden-char');
 
-        // 등장 애니메이션 재시작
+        // 등장
         charEl.classList.remove('entering');
         void charEl.offsetWidth;
         charEl.classList.add('entering');
-
         setTimeout(() => charEl.classList.remove('entering'), 800);
+
+        // 반짝이 시작
+        startSparkles();
+
+        // 랜덤 점프 시작
+        scheduleRandomHop();
       } else {
+        currentGrade = null;
         charEl.classList.add('hidden-char');
         charEl.src = '';
+        stopSparkles();
+        stopRandomHop();
       }
     }
 
@@ -555,7 +699,6 @@
         bubble.classList.add('show');
         playBlip();
 
-        // 💬 말풍선 뜰 때 캐릭터 반응
         const charEl = document.getElementById('character');
         charEl.classList.remove('reacting');
         void charEl.offsetWidth;
@@ -758,6 +901,8 @@
       document.getElementById('pm25Gauge').style.width = '0%';
       document.getElementById('pm10Gauge').style.width = '0%';
       setParticles('2');
+      stopSparkles();
+      stopRandomHop();
 
       status.textContent = '📍 위치 확인 중...';
       setProgress(20);
