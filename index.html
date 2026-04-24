@@ -719,9 +719,9 @@
         const lon = position.coords.longitude;
         setProgress(40);
 
-        const cache = getCache();
+const cache = getCache();
         if (isCacheValid(cache, lat, lon)) {
-          status.textContent = '✅ 저장된 정보 (최신 갱신 중...)';
+          status.textContent = '⚡ 빠르게 불러왔어요';
           setProgress(70);
           renderData(cache.data);
           hideProgress();
@@ -730,9 +730,13 @@
             .then(r => r.ok ? r.json() : null)
             .then(freshData => {
               if (freshData && freshData.dataTime !== cache.data.dataTime) {
+                // 데이터가 바뀌었으면 업데이트
                 setCache(freshData, lat, lon);
                 renderData(freshData, { silent: true });
-                status.textContent = '✅ 최신 정보로 업데이트 완료';
+                status.textContent = '✅ 최신 정보로 업데이트';
+              } else if (freshData) {
+                // 데이터 같음 = 확인 완료
+                status.textContent = '✅ 최신 정보 확인 완료';
               }
             })
             .catch(() => {});
